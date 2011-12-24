@@ -15,6 +15,7 @@ Works only if a JS interpreter (e.g. Mozilla's Rhino) is installed and
 properly set up on host."""
 
 from subprocess import PIPE, Popen
+import os
 
 PRIORITY = 3
 
@@ -24,16 +25,33 @@ def detect(source):
 
 def unpack(source):
     """Runs source and return resulting code."""
-    return jseval('print %s;' % source[4:]) if detect(source) else source
+    return jseval(source) if detect(source) else source
 
 # In case of failure, we'll just return the original, without crashing on user.
 def jseval(script):
     """Run code in the JS interpreter and return output."""
+    
+    jsc = "/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Resources/jsc"
+    other = 'js'
+    
+    if os.path.exists(jsc):
+        try:
+            print 'print(%s);' % script
+            interpreter = Popen([jsc,"-e",script], stdin=PIPE, stdout=PIPE)
+        except OSError:
+            result, errors = interpreter.communicate()
+            if not interpreter.poll() and not errors:
+                return result
+        
     try:
-        interpreter = Popen(['js'], stdin=PIPE, stdout=PIPE)
+        interpreter = Popen([other], stdin=PIPE, stdout=PIPE)
     except OSError:
         return script
-    result, errors = interpreter.communicate(script)
+
+    result, errors = interpreter.communicate('print %s;' % script[4:])
     if interpreter.poll() or errors:
         return script
+    
     return result
+        
+    return script
